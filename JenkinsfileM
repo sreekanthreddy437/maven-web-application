@@ -1,0 +1,34 @@
+node 
+{
+def mavenHome =tool name: "maven3.8.2"
+properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '5', daysToKeepStr: '', numToKeepStr: '5')), pipelineTriggers([pollSCM('* * * * *')])])
+stage ('Checkout')
+{
+git branch: 'development', credentialsId: '2a84a3b0-81e8-47b1-bf22-d04e4d37f0de', url: 'https://github.com/sreekanthreddy437/maven-web-application.git'
+}
+stage ('Build')
+{
+sh "${mavenHome}/bin/mvn clean package" 
+}
+stage ('Executesonarreport')
+{
+sh "${mavenHome}/bin/mvn sonar:sonar" 
+}
+stage ('UploadatrifactintoNexus')
+{
+sh "${mavenHome}/bin/mvn deploy" 
+}
+stage ('Deployappintoappserver')
+{
+sshagent(['bcc4045d-2519-4f1a-ab67-2697f66a58f0']) {
+sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@3.219.242.231:/opt/apache-tomcat-9.0.50/webapps/"
+}
+}
+stage ('sendEmailnotification')
+{
+emailext body: '''Build over 
+Regards.
+Reddy
+banglore.''', subject: 'Build over ', to: 'sskinvestmentadviser@gmail.com'
+}
+}
